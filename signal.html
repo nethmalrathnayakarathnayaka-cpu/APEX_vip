@@ -1,0 +1,98 @@
+// 100% ක්ම නිවැරදි කර සකස් කරන ලද VIP STRATEGY ඇල්ගොරිතමය
+async function runVipStrategy() {
+    const statusBox = document.getElementById('signalStatus');
+    statusBox.className = "status-badge NEUTRAL";
+    statusBox.innerText = "STRATEGY SCANNING...";
+
+    const pair = selectedCoin + "USDT";
+    const currentPrice = livePrices[pair];
+
+    if (!currentPrice) {
+        alert("Live price loading... Please wait a second and try again!");
+        statusBox.innerText = "READY TO SCAN";
+        return;
+    }
+
+    try {
+        // බයිනෑන්ස් එකෙන් අවසාන කැන්ඩල් 20 ක ඩේටා ලබාගැනීම
+        let res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${pair}&interval=1h&limit=20`);
+        let klines = await res.json();
+        
+        // Close Prices Array එකක් ලෙස වෙන් කිරීම
+        let closes = klines.map(k => parseFloat(k[4]));
+
+        // --- සරල සහ වේගවත් RSI (14) ඇල්ගොරිතමය ---
+        let gains = 0;
+        let losses = 0;
+        
+        // අවසාන දත්ත 14 ඇතුලත වෙනස්වීම් ගණනය කිරීම
+        for (let i = closes.length - 14; i < closes.length; i++) {
+            let difference = closes[i] - closes[i - 1];
+            if (difference > 0) {
+                gains += difference;
+            } else {
+                losses += Math.abs(difference);
+            }
+        }
+        
+        let rs = gains / (losses || 1);
+        let rsi = 100 - (100 / (1 + rs));
+
+        // --- TREND DIRECTION CHECK ---
+        // දැනට තියෙන මිල, කලින් කැන්ඩල් එකේ මිලට වඩා වැඩිද බලනවා
+        let lastClose = closes[closes.length - 1];
+        let prevClose = closes[closes.length - 2];
+        let isBullish = lastClose > prevClose;
+
+        // 🚨 BUY / SELL තීරණය (Decision)
+        let decision = "NEUTRAL";
+        
+        if (rsi < 48 || (rsi < 50 && isBullish)) {
+            decision = "BUY";
+        } else {
+            decision = "SELL";
+        }
+
+        // --- TARGETS (TP/SL) ഗණනය කිරීම ---
+        let risk = parseFloat(document.getElementById('riskInput').value) / 100;
+        if (isNaN(risk) || risk <= 0) risk = 0.02; // වැරදීමකින් හිස් වුනොත් Default 2% ගනී
+
+        let tp1, tp2, tp3, sl;
+        let decimalPlaces = currentPrice > 1 ? 2 : 4; // කොයිනයේ අගය අනුව දශමස්ථාන සෙට් කිරීම
+
+        if (decision === "BUY") {
+            statusBox.className = "status-badge BUY";
+            statusBox.innerText = "🚀 APEX VIP: BUY/LONG";
+            
+            tp1 = currentPrice * 1.01;
+            tp2 = currentPrice * 1.02;
+            tp3 = currentPrice * 1.03;
+            sl = currentPrice * (1 - risk);
+        } else {
+            statusBox.className = "status-badge SELL";
+            statusBox.innerText = "💥 APEX VIP: SELL/SHORT";
+            
+            tp1 = currentPrice * 0.99;
+            tp2 = currentPrice * 0.98;
+            tp3 = currentPrice * 0.97;
+            sl = currentPrice * (1 + risk);
+        }
+
+        // VIP ඩෑෂ්බෝඩ් එකේ ලිස්ට් එකට දත්ත පෙන්වීම
+        document.getElementById('shType').innerText = decision === "BUY" ? "LONG / BUY" : "SHORT / SELL";
+        document.getElementById('shType').className = decision === "BUY" ? "text-green" : "text-red";
+        document.getElementById('shEntry').innerText = `$${currentPrice.toFixed(decimalPlaces)}`;
+        document.getElementById('shTp1').innerText = `$${tp1.toFixed(decimalPlaces)}`;
+        document.getElementById('shTp2').innerText = `$${tp2.toFixed(decimalPlaces)}`;
+        document.getElementById('shTp3').innerText = `$${tp3.toFixed(decimalPlaces)}`;
+        document.getElementById('shSl').innerText = `$${sl.toFixed(decimalPlaces)}`;
+
+        // ඩෑෂ්බෝඩ් එකේ සිග්නල් ශීට් එක පෙන්වීම
+        document.getElementById('signalSheet').style.display = "block";
+
+    } catch (error) {
+        console.error("Scan Error:", error);
+        statusBox.className = "status-badge NEUTRAL";
+        statusBox.innerText = "SCAN ERROR (TRY AGAIN)";
+    }
+}

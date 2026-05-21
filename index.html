@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>APEXvip Signal - 100% Real Indicator Dashboard</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0c0d10; color: #eaecef; margin: 0; padding: 0; display: flex; height: 100vh; overflow: hidden; }
+        .sidebar { width: 320px; background: #14151a; border-right: 1px solid #22252c; display: flex; flex-direction: column; height: 100%; }
+        .brand { padding: 20px; font-size: 22px; font-weight: bold; color: #f3ba2f; text-align: center; border-bottom: 1px solid #22252c; letter-spacing: 1px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .brand span { color: #fff; }
+        .search-box { padding: 12px; border-bottom: 1px solid #22252c; }
+        .search-box input { width: 100%; padding: 10px; background: #1e2026; border: 1px solid #2b2f36; color: white; border-radius: 6px; box-sizing: border-box; }
+        .coin-list { flex: 1; overflow-y: auto; padding: 10px; }
+        .coin-item { display: flex; align-items: center; justify-content: space-between; padding: 12px; margin-bottom: 6px; background: #1e2026; border-radius: 8px; cursor: pointer; transition: 0.2s; border: 1px solid transparent; }
+        .coin-item:hover, .coin-item.active { background: #2b2f36; border-color: #f3ba2f; }
+        .coin-info { display: flex; align-items: center; gap: 10px; }
+        .coin-logo { width: 24px; height: 24px; border-radius: 50%; background: #2b2f36; }
+        .coin-name { font-weight: 600; font-size: 14px; }
+        .coin-price { font-family: monospace; font-size: 14px; color: #f3ba2f; font-weight: bold; }
+        .main-panel { flex: 1; display: flex; flex-direction: column; height: 100%; background: #0c0d10; }
+        .top-bar { height: 70px; background: #14151a; border-bottom: 1px solid #22252c; display: flex; align-items: center; justify-content: space-between; padding: 0 25px; }
+        .selected-coin-title { display: flex; align-items: center; gap: 12px; font-size: 18px; font-weight: bold; }
+        .chart-workspace { flex: 1; display: flex; gap: 15px; padding: 15px; overflow: hidden; }
+        .chart-container { flex: 1; background: #14151a; border-radius: 12px; overflow: hidden; border: 1px solid #22252c; height: 100%; }
+        .signal-panel { width: 320px; background: #14151a; border-radius: 12px; border: 1px solid #22252c; padding: 15px; display: flex; flex-direction: column; box-sizing: border-box; overflow-y: auto; }
+        .scan-btn { width: 100%; padding: 14px; background: #f3ba2f; border: none; color: #000; font-weight: bold; font-size: 15px; border-radius: 8px; cursor: pointer; text-transform: uppercase; margin-bottom: 15px; }
+        .scan-btn:hover { background: #dba420; }
+        .status-badge { font-size: 15px; font-weight: bold; padding: 12px; border-radius: 6px; text-align: center; margin-bottom: 15px; letter-spacing: 0.5px; }
+        .NEUTRAL { color: #848e9c; background: #1e2026; }
+        .BUY { color: #0ecb81; background: rgba(14, 203, 129, 0.1); border: 1px solid #0ecb81; }
+        .SELL { color: #f6465d; background: rgba(246, 70, 93, 0.1); border: 1px solid #f6465d; }
+        
+        .indicator-matrix { background: #1e2026; border-radius: 8px; padding: 10px; margin-bottom: 15px; font-size: 12px; border: 1px solid #2b2f36; }
+        .matrix-title { font-weight: bold; color: #848e9c; margin-bottom: 8px; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
+        .matrix-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #2b2f36; }
+        .matrix-row:last-child { border-bottom: none; }
+        .ind-val { font-weight: bold; font-family: monospace; }
+        
+        .sheet { background: #1e2026; padding: 12px; border-radius: 8px; font-family: monospace; display: none; border: 1px solid #2b2f36; }
+        .sheet-row { display: flex; justify-content: space-between; margin: 8px 0; font-size: 13px; }
+        .sheet-row span { color: #848e9c; }
+        .text-green { color: #0ecb81; }
+        .text-red { color: #f6465d; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #2b2f36; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+    <!-- SIDEBAR: COIN LIST WITH SEARCH -->
+    <div class="sidebar">
+        <div class="brand">⚡ APEX<span>vip Signal</span></div>
+        <div class="search-box">
+            <input type="text" id="searchCoin" placeholder="Search coin (e.g. BTC, SOL)..." oninput="filterCoins()">
+        </div>
+        <div class="coin-list" id="coinListContainer"></div>
+    </div>
+
+    <!-- MAIN DASHBOARD PANEL -->
+    <div class="main-panel">
+        <div class="top-bar">
+            <div class="selected-coin-title">
+                <img id="mainLogo" class="coin-logo" src="https://s2.coinmarketcap.com/static/img/coins/64x64/1.png" alt="">
+                <span id="mainCoinName">BTCUSDT</span>
+            </div>
+            <div>
+                <label style="color:#848e9c; font-size:12px; margin-right:5px;">Risk:</label>
+                <input type="number" id="riskInput" value="2" style="width:50px; padding:5px; background:#1e2026; border:1px solid #2b2f36; color:white; border-radius:4px; text-align:center;"> %
+            </div>
+        </div>
+
+        <div class="chart-workspace">
+            <!-- LIVE TRADINGVIEW CHART -->
+            <div class="chart-container" id="tv_chart_container"></div>
+
+            <!-- VIP REAL SIGNAL GENERATOR -->
+            <div class="signal-panel">
+                <button class="scan-btn" onclick="runVipStrategy()">⚡ Auto Scan VIP Signal</button>
+                <div class="status-badge NEUTRAL" id="signalStatus">READY TO SCAN</div>
+                
+                <!-- REAL-TIME INDICATOR MATRIX -->
+                <div class="indicator-matrix">
+                    <div class="matrix-title">📊 Real-Time Indicators</div>
+                    <div class="matrix-row"><span>1. Live RSI (14) Value</span><span class="ind-val" id="indRsiValue" style="color: #fff;">-</span></div>
+                    <div class="matrix-row"><span>2. Live RSI Action</span><span class="ind-val" id="indRsiAction">WAITING</span></div>
+                    <div class="matrix-row"><span>3. Price vs MA (20)</span><span class="ind-val" id="indMaAction">WAITING</span></div>
+                    <div class="matrix-row" style="border-top: 1px dashed #444; margin-top:5px; padding-top:8px;">
+                        <span style="color:#f3ba2f; font-weight:bold;">🛡️ CONFLUENCE FILTER</span>
+                        <span class="ind-val" id="indFilterStatus" style="color:#fff;">WAITING</span>
+                    </div>
+                </div>
+
+                <!-- SIGNAL ENTRY & TARGETS OUTPUT SHEET -->
+                <div class="sheet" id="signalSheet">
+                    <div style="text-align:center; color:#f3ba2f; margin-bottom:10px; font-weight:bold; font-size:14px;">🎯 APEX VIP TARGETS</div>
+                    <div class="sheet-row"><span>Position:</span><strong id="shType">-</strong></div>
+                    <div class="sheet-row"><span>Entry Price:</span><strong id="shEntry">-</strong></div>
+                    <div style="border-top:1px solid #2b2f36; margin:8px 0;"></div>
+                    <div class="sheet-row"><span>Target 1:</span><strong class="text-green" id="shTp1">-</strong></div>
+                    <div class="sheet-row"><span>Target 2:</span><strong class="text-green" id="shTp2">-</strong></div>
+                    <div class="sheet-row"><span>Target 3:</span><strong class="text-green" id="shTp3">-</strong></div>
+                    <div style="border-top:1px solid #2b2f36; margin:8px 0;"></div>
+                    <div class="sheet-row"><span>Stop Loss:</span><strong class="text-red" id="shSl">-</strong></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TRADINGVIEW EMBED SCRIPT -->
+    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+
+    <script>
+        // 🚀 PREFERRED TOP 40 HIGH-LIQUIDITY COINS
+        const coinTickerList = [
+            "BTC", "ETH", "SOL", "XRP", "ADA", "DOT", "AVAX", "LINK", "DOGE", "MATIC",
+            "SHIB", "LTC", "UNI", "ATOM", "TRX", "NEAR", "INJ", "RNDR", "FET", "RUNE",
+            "SUI", "TIA", "OP", "ARB", "STX", "PEPE", "BONK", "WIF", "FLOKI", "JASMY",
+            "TON", "W", "STRK", "MEME", "AGIX", "AR", "GALA", "ETC", "BCH", "FIL"
+        ];
+
+        // 🖼️ OFFICIAL COINMARKETCAP LOGO MAP (40 COINS)
+        const logoMap = { 
+            "BTC": 1, "ETH": 1027, "SOL": 5426, "XRP": 52, "ADA": 2010, "DOT": 6636, "AVAX": 5805, "LINK": 1975, "DOGE": 74, "MATIC": 3890,
+            "SHIB": 5994, "LTC": 2, "UNI": 7083, "ATOM": 3794, "TRX": 1958, "NEAR": 6535, "INJ": 7226, "RNDR": 5690, "FET": 3773, "RUNE": 4157,
+            "SUI": 20947, "TIA": 22861, "OP": 11840, "ARB": 11841, "STX": 4847, "PEPE": 24478, "BONK": 23095, "WIF": 28752, "FLOKI": 10804, "JASMY": 8422,
+            "TON": 11419, "W": 29424, "STRK": 22691, "MEME": 28303, "AGIX": 2424, "AR": 5632, "GALA": 7080, "ETC": 1321, "BCH": 1831, "FIL": 2280
+        };
+
+        let selectedCoin = "BTC";
+        let livePrices = {};
+        let activeSockets = {};
+
+        // INITIALIZE COIN LIST
+        function initCoinList() {
+            const container = document.getElementById('coinListContainer');
+            container.innerHTML = "";
+            coinTickerList.forEach(coin => {
+                const pair = coin + "USDT";
+                const div = document.createElement('div');
+                div.className = `coin-item ${coin === selectedCoin ? 'active' : ''}`;
+                div.id = `item-${coin}`;
+                div.onclick = () => selectCoin(coin);
+
+                let logoId = logoMap[coin] || 1; 
+                div.innerHTML = `
+                    <div class="coin-info">
+                        <img class="coin-logo" src="https://s2.coinmarketcap.com/static/img/coins/64x64/${logoId}.png" onerror="this.src='https://s2.coinmarketcap.com/static/img/coins/64x64/1.png'">
+                        <span class="coin-name">${coin}/USDT</span>
+                    </div>
+                    <div class="coin-price" id="price-${pair}">Connecting...</div>
+                `;
+                container.appendChild(div);
+                startPriceStream(pair);
+            });
+        }
+
+        // BINANCE LIVE WEBSOCKET FOR TICKER PRICES
+        function startPriceStream(pair) {
+            if (activeSockets[pair]) return;
+            const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${pair.toLowerCase()}@ticker`);
+            activeSockets[pair] = ws;
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                livePrices[pair] = parseFloat(data.c);
+                const element = document.getElementById(`price-${pair}`);
+                if (element) element.innerText = livePrices[pair] > 1 ? livePrices[pair].toFixed(2) : livePrices[pair].toFixed(4);
+            };
+        }
+
+        // COIN SWITCHER LOGIC
+        function selectCoin(coin) {
+            document.getElementById(`item-${selectedCoin}`).classList.remove('active');
+            selectedCoin = coin;
+            document.getElementById(`item-${coin}`).classList.add('active');
+            document.getElementById('mainCoinName').innerText = coin + "USDT";
+            let logoId = logoMap[coin] || 1;
+            document.getElementById('mainLogo').src = `https://s2.coinmarketcap.com/static/img/coins/64x64/${logoId}.png`;
+            loadPremiumTradingView(coin + "USDT");
+            resetIndicatorsPanel();
+        }
+
+        // EMBED TRADINGVIEW LIVE FRAMEWORK
+        function loadPremiumTradingView(pair) {
+            document.getElementById('tv_chart_container').innerHTML = "";
+            new TradingView.widget({
+                "autosize": true, "symbol": `BINANCE:${pair}`, "interval": "60", "theme": "dark", "style": "1", "locale": "en",
+                "studies": ["RSI@tv-basicstudies", "MASimple@tv-basicstudies"], "container_id": "tv_chart_container"
+            });
+        }
+
+        function resetIndicatorsPanel() {
+            document.getElementById('signalStatus').className = "status-badge NEUTRAL";
+            document.getElementById('signalStatus').innerText = "READY TO SCAN";
+            document.getElementById('indRsiValue').innerText = "-";
+            document.getElementById('indRsiAction').innerText = "WAITING"; document.getElementById('indRsiAction').style.color = "#fff";
+            document.getElementById('indMaAction').innerText = "WAITING"; document.getElementById('indMaAction').style.color = "#fff";
+            document.getElementById('indFilterStatus').innerText = "WAITING"; document.getElementById('indFilterStatus').style.color = "#fff";
+            document.getElementById('signalSheet').style.display = 'none';
+        }
+
+        // SEARCH SIDEBAR FILTER
+        function filterCoins() {
+            let input = document.getElementById('searchCoin').value.toUpperCase().trim();
+            coinTickerList.forEach(coin => {
+                let div = document.getElementById(`item-${coin}`);
+                if (div) div.style.display = coin.includes(input) ? "flex" : "none";
+            });
+        }
+
+        // 📊 REAL HISTORICAL DATA MATH INTEGRATION
+        async function runVipStrategy() {
+            const statusBox = document.getElementById('signalStatus');
+            statusBox.className = "status-badge NEUTRAL";
+            statusBox.innerText = "FETCHING REAL DATA...";
+
+            const pair = selectedCoin + "USDT";
+            const currentPrice = livePrices[pair];
+
+            if (!currentPrice) {
+                statusBox.innerText = "WAITING FOR TICKER...";
+                return;
+            }
+
+            try {
+                // සැබෑ බයිනෑන්ස් API එකෙන් පසුගිය 1-Hour කැන්ඩල් 30ක දත්ත ලබාගැනීම
+                let response = await fetch(`https://api.binance.com/api/v3/klines?symbol=${pair}&interval=1h&limit=30`);
+                let klines = await response.json();
+                
+                let closes = klines.map(k => parseFloat(k[4]));
+                
+                // 1. REAL RSI (14) CALCULATION
+                let gains = 0, losses = 0;
+                for (let i = closes.length - 14; i < closes.length; i++) {
+                    let diff = closes[i] - closes[i - 1];
+                    if (diff > 0) gains += diff;
+                    else losses += Math.abs(diff);
+                }
+                let avgGain = gains / 14;
+                let avgLoss = losses / 14;
+                let rs = avgGain / (avgLoss || 1);
+                let realRsi = 100 - (100 / (1 + rs));
+
+                document.getElementById('indRsiValue').innerText = realRsi.toFixed(2);
+
+                let rsiAction = "NEUTRAL";
+                if (realRsi <= 40) rsiAction = "BUY";
+                else if (realRsi >= 60) rsiAction = "SELL";
+                
+                let rsiEl = document.getElementById('indRsiAction');
+                rsiEl.innerText = rsiAction;
+                rsiEl.style.color = rsiAction === "BUY" ? "#0ecb81" : (rsiAction === "SELL" ? "#f6465d" : "#848e9c");
+
+                // 2. REAL MOVING AVERAGE (MA 20) CALCULATION
+                let last20Closes = closes.slice(closes.length - 20);
+                let sum = last20Closes.reduce((a, b) => a + b, 0);
+                let realMa20 = sum / 20;
+
+                let maAction = "NEUTRAL";
+                if (currentPrice > realMa20) maAction = "BUY";
+                else maAction = "SELL";
+
+                let maEl = document.getElementById('indMaAction');
+                maEl.innerText = currentPrice > realMa20 ? "PRICE > MA20 (BUY)" : "PRICE < MA20 (SELL)";
+                maEl.style.color = maAction === "BUY" ? "#0ecb81" : "#f6465d";
+
+                // 3. STRICT CONFLUENCE FILTER (100% MATCH CRITERIA)
+                let filterStatusEl = document.getElementById('indFilterStatus');
+                let finalDecision = "HOLD";
+
+                if (rsiAction === "BUY" && maAction === "BUY") {
+                    filterStatusEl.innerText = "STRONG CONFLUENCE (BUY)";
+                    filterStatusEl.style.color = "#0ecb81";
+                    finalDecision = "BUY";
+                } else if (rsiAction === "SELL" && maAction === "SELL") {
+                    filterStatusEl.innerText = "STRONG CONFLUENCE (SELL)";
+                    filterStatusEl.style.color = "#f6465d";
+                    finalDecision = "SELL";
+                } else {
+                    filterStatusEl.innerText = "NO MATCH (NO SIGNAL GENERATED)";
+                    filterStatusEl.style.color = "#f3ba2f";
+                    statusBox.innerText = "MARKET UNSTABLE (HOLD)";
+                    document.getElementById('signalSheet').style.display = 'none';
+                    return;
+                }
+
+                // RISK CALCULATION AND TARGET SHEETS
+                let risk = parseFloat(document.getElementById('riskInput').value) / 100;
+                if (isNaN(risk) || risk <= 0) risk = 0.02;
+
+                let tp1, tp2, tp3, sl;
+                let decimalPlaces = currentPrice > 1 ? 2 : 4;
+
+                if (finalDecision === "BUY") {
+                    statusBox.className = "status-badge BUY";
+                    statusBox.innerText = "🎯 REAL VIP: CONFIRMED BUY";
+                    tp1 = currentPrice * 1.015;
+                    tp2 = currentPrice * 1.03;
+                    tp3 = currentPrice * 1.05;
+                    sl = currentPrice * (1 - risk);
+                } else {
+                    statusBox.className = "status-badge SELL";
+                    statusBox.innerText = "💥 REAL VIP: CONFIRMED SELL";
+                    tp1 = currentPrice * 0.985;
+                    tp2 = currentPrice * 0.97;
+                    tp3 = currentPrice * 0.95;
+                    sl = currentPrice * (1 + risk);
+                }
+
+                // RENDERING TO UI
+                document.getElementById('shType').innerText = finalDecision === "BUY" ? "REAL LONG / BUY" : "REAL SHORT / SELL";
+                document.getElementById('shType').className = finalDecision === "BUY" ? "text-green" : "text-red";
+                document.getElementById('shEntry').innerText = `$${currentPrice.toFixed(decimalPlaces)}`;
+                document.getElementById('shTp1').innerText = `$${tp1.toFixed(decimalPlaces)}`;
+                document.getElementById('shTp2').innerText = `$${tp2.toFixed(decimalPlaces)}`;
+                document.getElementById('shTp3').innerText = `$${tp3.toFixed(decimalPlaces)}`;
+                document.getElementById('shSl').innerText = `$${sl.toFixed(decimalPlaces)}`;
+
+                document.getElementById('signalSheet').style.display = "block";
+
+            } catch (error) {
+                console.error("Fetch Error:", error);
+                statusBox.innerText = "CONNECTION TIMEOUT (TRY AGAIN)";
+            }
+        }
+
+        window.onload = function() {
+            initCoinList();
+            setTimeout(() => { loadPremiumTradingView("BTCUSDT"); }, 500);
+        };
+    </script>
+</body>
+</html>
